@@ -1,6 +1,5 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
-import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
@@ -29,7 +28,7 @@ export class AuthService {
     const user: any = await this.usersService.findByEmail(email);
     if (!user) throw new UnauthorizedException('User not register!');
 
-    const comparePassword = await bcrypt.compare(pass, user.password);
+    const comparePassword = pass === user.password;
     if (!comparePassword) throw new UnauthorizedException('Password not match');
 
     const { password, ...result } = user;

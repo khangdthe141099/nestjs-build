@@ -21,7 +21,7 @@ export class FilesController {
 
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
-  uploadFile(
+  async uploadFile(
     @UploadedFile(
       new ParseFilePipeBuilder()
         .addFileTypeValidator({
@@ -36,26 +36,12 @@ export class FilesController {
     )
     file: Express.Multer.File,
   ) {
-    console.log(file);
+    console.log('file', file);
+    await this.filesService.uploadToS3(file.originalname, file.buffer);
   }
 
-  @Get()
-  findAll() {
-    return this.filesService.findAll();
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.filesService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateFileDto: UpdateFileDto) {
-    return this.filesService.update(+id, updateFileDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.filesService.remove(+id);
+  @Get('/download')
+  get() {
+    return this.filesService.downloadFile();
   }
 }

@@ -1,26 +1,50 @@
 import { Injectable } from '@nestjs/common';
-import { CreateFileDto } from './dto/create-file.dto';
-import { UpdateFileDto } from './dto/update-file.dto';
+import {
+  GetObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
+import { ConfigService } from '@nestjs/config';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 @Injectable()
 export class FilesService {
-  create(createFileDto: CreateFileDto) {
-    return 'This action adds a new file';
+  constructor(private configService: ConfigService) {}
+
+  private readonly s3Client = new S3Client({
+    region: this.configService.getOrThrow('AWS_S3_REGION'),
+    credentials: {
+      accessKeyId: this.configService.getOrThrow('AWS_S3_ACCESS_KEY'),
+      secretAccessKey: this.configService.getOrThrow(
+        'AWS_S3_SECRET_ACCESS_KEY',
+      ),
+    },
+  });
+
+  async uploadToS3(filename: string, file: Buffer) {
+    await this.s3Client.send(
+      new PutObjectCommand({
+        Bucket: this.configService.getOrThrow('AWS_S3_BUCKET_NAME'),
+        Key: filename,
+        Body: file,
+      }),
+    );
   }
 
-  findAll() {
-    return `This action returns all files`;
-  }
+  async downloadFile() {
+    const command = new GetObjectCommand({
+      Bucket: this.configService.getOrThrow('AWS_S3_BUCKET_NAME'),
+      Key: 'coffee.jpg',
+    });
 
-  findOne(id: number) {
-    return `This action returns a #${id} file`;
-  }
+    //File objects:
+    const response = await this.s3Client.send(command);
 
-  update(id: number, updateFileDto: UpdateFileDto) {
-    return `This action updates a #${id} file`;
-  }
+    //File url:
+    const url = await getSignedUrl(this.s3Client, command, { expiresIn: 3600 });
 
-  remove(id: number) {
-    return `This action removes a #${id} file`;
+    if (response.Body) {
+      return url
+    }
   }
 }
